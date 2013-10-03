@@ -10,6 +10,7 @@
 
     <properties>
         <opencv.version>246</opencv.version>
+        <!-- TODO change the following paths with your own ones. -->
         <opencv.jar.path>/home/edaubert/bin/opencv/share/OpenCV/java/opencv-246.jar</opencv.jar.path>
         <opencv.library.path>/home/edaubert/bin/opencv/share/OpenCV/java/</opencv.library.path>
         <freenect.library.path>/home/edaubert/bin/freenect/lib/</freenect.library.path>
