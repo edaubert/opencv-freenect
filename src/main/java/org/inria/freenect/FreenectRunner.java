@@ -4,6 +4,8 @@ import org.inria.display.CloseKeyListener;
 import org.inria.display.freenect.IndependantDisplayFrame;
 import org.inria.freenect.sample.DepthHandlerImpl;
 import org.inria.freenect.sample.VideoHandlerImpl;
+import org.openkinect.freenect.DepthFormat;
+import org.openkinect.freenect.VideoFormat;
 
 /**
  * User: Erwan Daubert - erwan.daubert@gmail.com
@@ -16,8 +18,8 @@ import org.inria.freenect.sample.VideoHandlerImpl;
 public class FreenectRunner {
 
     public static void main(String[] args) {
-        DepthHandlerImpl depthHandler = new DepthHandlerImpl(640, 480);
-        VideoHandlerImpl videoHandler = new VideoHandlerImpl(640, 480);
+        DepthHandlerImpl depthHandler = new DepthHandlerImpl(640, 480, DepthFormat.D11BIT);
+        VideoHandlerImpl videoHandler = new VideoHandlerImpl(640, 480, VideoFormat.IR_10BIT);
 
         KinectManager manager = new KinectManager();
         manager.initializeContext();

@@ -15,25 +15,23 @@ import java.nio.ByteBuffer;
  * @version 1.0
  */
 public class DepthHandlerImpl implements DepthHandler {
-    private final Object lock;
-    private long startTime;
+    protected final Object lock;
 
-    private int nbFramePerMin;
-    private double fps;
-    private int nbFrame;
-    private int[] depthFrame;
+    protected int[] depthFrame;
 
-    private int width;
-    private int height;
-    private int frameSize;
+    protected int width;
+    protected int height;
+    protected int frameSize;
+
+    protected DepthFormat format;
 
     public DepthFormat getFormat() {
-        return DepthFormat.D11BIT;
+        return format;
     }
 
-    public DepthHandlerImpl(int width, int height) {
+    public DepthHandlerImpl(int width, int height, DepthFormat format) {
         lock = new Object();
-        startTime = System.nanoTime();
+        this.format = format;
         this.width = width;
         this.height = height;
         frameSize = width * height;
@@ -43,27 +41,76 @@ public class DepthHandlerImpl implements DepthHandler {
     @Override
     public void onFrameReceived(FrameMode mode, ByteBuffer frame, int timestamp) {
         synchronized (lock) {
-            nbFrame++;
-
-            int ix = 0;
             if (depthFrame != null) {
-                for( int i = 0; i < mode.getFrameSize();) {
-                    int lo = frame.get(i++) & 255;
-                    int hi = frame.get(i++) & 255;
-                    int sample = hi << 8 | lo;
-//                    frame.asIntBuffer().array()
-                    depthFrame[ix++] = sample;
-                }
+                // TODO format is not manage here (only D11BIT is handled)
+                processD11BIT(mode, frame, timestamp);
             }
-//            depthFrame = frame.asIntBuffer().array();
-        }
-        if (nbFramePerMin == 30) {
-            fps = ((double) System.nanoTime() - startTime) / 1000000000;
-            nbFramePerMin = 0;
-            startTime = System.nanoTime();
         }
         // following line avoid JVM crash due to segfault on freenect!! Without this line the buffer where frames are stored grows in a infinite way
         frame.position(0);
+    }
+
+    protected void processD11BIT(FrameMode mode, ByteBuffer frame, int timestamp) {
+        int ix = 0;
+        for( int i = 0; i < mode.getFrameSize();) {
+            int lo = frame.get(i++) & 255;
+            int hi = frame.get(i++) & 255;
+            int depth = (hi << 8 | lo) & 2047; // 2047 is the number of possible value so we ensure that the value we get is lesser or equals to that
+            depthFrame[ix++] = depth2rgb((short)depth);
+        }
+    }
+
+    private int depth2rgb(short depth) {
+        int r, g, b;
+
+        float v = depth / 2047f;
+        v = (float) Math.pow(v, 3) * 6;
+        v = v * 6 * 256;
+
+        int pval = Math.round(v);
+        int lb = pval & 0xff;
+        switch (pval >> 8) {
+            case 0:
+                b = 255;
+                g = 255 - lb;
+                r = 255 - lb;
+                break;
+            case 1:
+                b = 255;
+                g = lb;
+                r = 0;
+                break;
+            case 2:
+                b = 255 - lb;
+                g = 255;
+                r = 0;
+                break;
+            case 3:
+                b = 0;
+                g = 255;
+                r = lb;
+                break;
+            case 4:
+                b = 0;
+                g = 255 - lb;
+                r = 255;
+                break;
+            case 5:
+                b = 0;
+                g = 0;
+                r = 255 - lb;
+                break;
+            default:
+                r = 0;
+                g = 0;
+                b = 0;
+                break;
+        }
+
+        return (0xFF) << 24
+                | (b & 0xFF) << 16
+                | (g & 0xFF) << 8
+                | (r & 0xFF);
     }
 
     public void getFrame(int[] dst) {

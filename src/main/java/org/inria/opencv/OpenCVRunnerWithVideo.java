@@ -4,6 +4,7 @@ import org.inria.freenect.FreenectRunner;
 import org.inria.freenect.KinectManager;
 import org.inria.freenect.sample.DepthHandlerImpl;
 import org.inria.opencv.freenect.sample.OpenCVFaceDetectionHandler;
+import org.openkinect.freenect.DepthFormat;
 
 /**
  * User: Erwan Daubert - erwan.daubert@gmail.com
@@ -19,7 +20,7 @@ public class OpenCVRunnerWithVideo extends FreenectRunner {
     public static void main(String[] args) {
         new OpenCVManager().initializeOpenCV();
 
-        DepthHandlerImpl depthHandler = new DepthHandlerImpl(640, 480);
+        DepthHandlerImpl depthHandler = new DepthHandlerImpl(640, 480, DepthFormat.D11BIT);
         OpenCVFaceDetectionHandler videoHandler = new OpenCVFaceDetectionHandler("/home/edaubert/bin/opencv/share/OpenCV/lbpcascades/lbpcascade_frontalface.xml", 640, 480);
 
         KinectManager manager = new KinectManager();

@@ -14,26 +14,31 @@ import org.opencv.objdetect.CascadeClassifier;
 public class OpenCVFaceDetection {
 
     private CascadeClassifier faceDetector;
+    private Mat internalMat;
 
     public OpenCVFaceDetection(String cascadeClassifierPath) {
         faceDetector = new CascadeClassifier(cascadeClassifierPath);
+        internalMat = new MatOfInt();
     }
 
     public MatOfRect detect(Mat image) {
-
-        Mat tmp = image;
         if (image.depth() != CvType.CV_8U) {
-            image.convertTo(tmp, CvType.CV_8U);
+            internalMat.create(image.height(), image.width(), CvType.CV_8U);
+            image.convertTo(internalMat, CvType.CV_8U);
+        } else {
+            // avoid to modify the given image
+            // Moreover without this clone faces are not detected ...
+            internalMat = image.clone();
         }
 
         // MatOfRect is a special container class for Rect.
         MatOfRect faces = new MatOfRect();
         // Detect faces in the image.
-        faceDetector.detectMultiScale(tmp, faces);
+        faceDetector.detectMultiScale(internalMat, faces);
         return faces;
     }
 
-    private void drawRectForFace(Mat image, MatOfRect faces) {
+    public void drawRectForFace(Mat image, MatOfRect faces) {
         // Draw a bounding box around each face.
         for (Rect rect : faces.toArray()) {
             Core.rectangle(image, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(0, 255, 0));

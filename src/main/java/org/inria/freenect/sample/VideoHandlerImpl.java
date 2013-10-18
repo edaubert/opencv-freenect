@@ -15,26 +15,23 @@ import java.nio.ByteBuffer;
  * @version 1.0
  */
 public class VideoHandlerImpl implements VideoHandler {
-    private final Object lock;
-    private long startTime;
+    protected final Object lock;
 
-    private int nbFramePerMin;
-    private double fps;
-    private int nbFrame;
-    private int[] videoFrame;
+    protected int[] videoFrame;
 
-    private int width;
-    private int height;
-    private int frameSize;
+    protected int width;
+    protected int height;
+    protected int frameSize;
 
+    protected VideoFormat format;
 
     public VideoFormat getFormat() {
-        return VideoFormat.RGB;
+        return format;
     }
 
-    public VideoHandlerImpl(int width, int height) {
+    public VideoHandlerImpl(int width, int height, VideoFormat format) {
         lock = new Object();
-        startTime = System.nanoTime();
+        this.format = format;
         this.width = width;
         this.height = height;
         frameSize = width * height;
@@ -44,46 +41,47 @@ public class VideoHandlerImpl implements VideoHandler {
     @Override
     public void onFrameReceived(FrameMode mode, ByteBuffer frame, int timestamp) {
         synchronized (lock) {
-            nbFrame++;
-            int num_samples;
-            int ix = 0;
             if (videoFrame != null) {
                 if (VideoFormat.fromInt(mode.format) == VideoFormat.IR_8BIT) {
-                    num_samples = frameSize;
-                    for (int i = 0; i < num_samples; ) {
-
-                        //int lo = frame.get(i++);
-                        //int a = 0xFF000000 | lo << 16 | lo << 8 | lo;
-                        int sample = frame.get(i++);
-                        videoFrame[ix++] = sample;
-                    }
+                    processIR_8BIT(mode, frame, timestamp);
                 } else if (VideoFormat.fromInt(mode.format) == VideoFormat.IR_10BIT) {
-                    num_samples = 2 * frameSize;
-                    for (int i = 0; i < num_samples; ) {
-                        int lo = frame.get(i++) & 255;
-                        int hi = frame.get(i++) & 255;
-                        //pixVideo[ix++] = hi << 8 | lo;
-                        int sample = (hi << 8 | lo) >> 2;
-                        //pixVideo[ix++] = 0xFF000000 | a << 16 | a << 8 | a;
-                        videoFrame[ix++] = sample;
-                    }
+                    processIR_10BIT(mode, frame, timestamp);
                 } else if (VideoFormat.fromInt(mode.format) == VideoFormat.RGB) {
-                    num_samples = 3 * frameSize;
-                    for (int i = 0; i < num_samples; ) {
-                        int sample = 0xFF000000 | (frame.get(i++) & 255) << 16 | (frame.get(i++) & 255) << 8 | (frame.get(i++) & 255);
-                        videoFrame[ix++] = sample;
-                    }
+                    processRGB(mode, frame, timestamp);
                 }
-
             }
-        }
-        if (nbFrame == 30) {
-            fps = ((double) System.nanoTime() - startTime) / 1000000000;
-            nbFrame = 0;
-            startTime = System.nanoTime();
         }
         // following line avoid JVM crash due to segfault on freenect!! Without this line the buffer where frames are stored grows in a infinite way
         frame.position(0);
+    }
+
+    protected void processIR_8BIT(FrameMode mode, ByteBuffer frame, int timestamp) {
+        int num_samples = frameSize;
+        int ix = 0;
+        for (int i = 0; i < num_samples; ) {
+            int b = frame.get(i++);
+            videoFrame[ix++] = 0xFF000000 | (b & 255) << 16 | (b & 255) << 8 | (b & 255);
+        }
+    }
+
+    protected void processIR_10BIT(FrameMode mode, ByteBuffer frame, int timestamp) {
+        int num_samples = 2 * frameSize;
+        int ix = 0;
+        for (int i = 0; i < num_samples; ) {
+            int lo = frame.get(i++) & 255;
+            int hi = frame.get(i++) & 255;
+            int sample = (hi << 8 | lo) >> 2;
+            videoFrame[ix++] = 0xFF000000 | (sample & 255) << 16 | (sample & 255) << 8 | (sample & 255);
+        }
+    }
+
+    protected void processRGB(FrameMode mode, ByteBuffer frame, int timestamp) {
+        int num_samples = 3 * frameSize;
+        int ix = 0;
+        for (int i = 0; i < num_samples; ) {
+            int sample = 0xFF000000 | (frame.get(i++) & 255) << 16 | (frame.get(i++) & 255) << 8 | (frame.get(i++) & 255);
+            videoFrame[ix++] = sample;
+        }
     }
 
     public void getFrame(int[] dst) {
